@@ -10,3 +10,11 @@ class User(AbstractUser):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+
+
+class Booking(models.Model):
+    slot_number = models.IntegerField()
+    cost = models.IntegerField()
+    time = models.DateTimeField(auto_now_add=True)
+    duration = models.DurationField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user")

@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
-from .serializers import UserSerializer
-from .models import User
+from .serializers import UserSerializer, BookingSerializer
+from .models import User, Booking
 import jwt, datetime
 
 
@@ -35,7 +35,7 @@ class LoginView(APIView):
         }
 
         # secret should be in the prod env, not here
-        token = jwt.encode(payload, "secret", algorithm="HS256")
+        token = jwt.encode(payload, "secret", algorithms="HS256")
 
         response = Response()
         response.set_cookie(key="jwt", value=token, httponly=True)
@@ -53,7 +53,7 @@ class UserView(APIView):
             raise AuthenticationFailed("Unauthenticated!!")
 
         try:
-            payload = jwt.decode(token, "secret", algorithm=["HS256"])
+            payload = jwt.decode(token, "secret", algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed("Token expired!!")
 
@@ -70,3 +70,23 @@ class LogoutView(APIView):
         response.data = {"message": "success"}
 
         return response
+
+
+class BookingView(APIView):
+    def get(self, request):
+        token = request.COOKIES.get("jwt")
+
+        if not token:
+            raise AuthenticationFailed("Unauthenticated")
+
+        try:
+            payload = jwt.decode(token, "secret", algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationFailed("Token expired!!")
+
+    def post(self, request):
+        serializer = BookingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data)
