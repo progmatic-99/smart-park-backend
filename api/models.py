@@ -15,6 +15,6 @@ class User(AbstractUser):
 class Booking(models.Model):
     slot_number = models.IntegerField()
     cost = models.IntegerField()
-    time = models.DateTimeField(auto_now_add=True)
+    time = models.DateTimeField()
     duration = models.DurationField()
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user")

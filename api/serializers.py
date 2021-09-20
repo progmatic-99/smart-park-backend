@@ -22,4 +22,4 @@ class UserSerializer(serializers.ModelSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
-        fields = ["slot_number", "cost", "time", "duration"]
+        fields = ["slot_number", "cost", "time", "duration", "user_id"]
