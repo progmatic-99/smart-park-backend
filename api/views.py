@@ -2,13 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import (
     AuthenticationFailed,
-    ValidationError,
-    PermissionDenied,
-    NotFound,
 )
-from .serializers import UserSerializer, BookingSerializer
-from .models import User, Booking
-import jwt, datetime
+from .serializers import UserSerializer
+from .models import User
+from .serializers import MyTokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class RegisterView(APIView):
@@ -18,6 +17,10 @@ class RegisterView(APIView):
         serializer.save()
 
         return Response(serializer.data)
+
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
 
 class LoginView(APIView):
@@ -33,39 +36,15 @@ class LoginView(APIView):
         if not user.check_password(password):
             raise AuthenticationFailed("Incorrect password.")
 
-        payload = {
-            "id": user.id,
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
-            "iat": datetime.datetime.utcnow(),
-        }
-
-        # secret should be in the prod env, not here
-        token = jwt.encode(payload, "secret", algorithm="HS256")
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
 
         response = Response()
-        response.set_cookie(key="jwt", value=token, httponly=True)
+        response.set_cookie(key="jwt", value=access_token, httponly=True)
 
-        response.data = {"jwt": token}
+        response.data = {"refresh": str(refresh)}
 
         return response
-
-
-class UserView(APIView):
-    def get(self, request):
-        token = request.COOKIES.get("jwt")
-
-        if not token:
-            raise AuthenticationFailed("Unauthenticated!!")
-
-        try:
-            payload = jwt.decode(token, "secret", algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed("Token expired!!")
-
-        user = User.objects.filter(id=payload["id"]).first()
-        serializer = UserSerializer(user)
-
-        return Response(serializer.data)
 
 
 class LogoutView(APIView):
@@ -77,37 +56,42 @@ class LogoutView(APIView):
         return response
 
 
-class BookingView(APIView):
-    def get(self, request):
-        token = request.COOKIES.get("jwt")
+# class BookingView(APIView):
+#     def get(self, request):
+#         token = request.COOKIES.get("jwt")
 
-        if not token:
-            raise AuthenticationFailed("Unauthenticated")
+#         if not token:
+#             raise AuthenticationFailed("Unauthenticated")
 
-        try:
-            payload = jwt.decode(token, "secret", algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed("Token expired!!")
+#         try:
+#             payload = jwt.decode(token, secret, algorithms=["HS256"])
+#         except jwt.ExpiredSignatureError:
+#             raise AuthenticationFailed("Token expired!!")
 
-        user = User.objects.filter(email=payload["email"]).first()
-        serializer = BookingSerializer(user)
+#         user = User.objects.filter(id=payload["id"]).first()
+#         serializer = BookingSerializer(user)
 
-        return Response(serializer.data)
+#         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = BookingSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+#     def post(self, request):
+#         token = request.COOKIES.get("jwt")
 
-        if not request.user:
-            raise PermissionDenied("Provide user!!")
+#         if not token:
+#             raise AuthenticationFailed("Login first!!")
 
-        if not request.data.get("email"):
-            raise ValidationError("Email must be provided.")
+#         try:
+#             payload = jwt.decode(token, secret, algorithms=["HS256"])
+#         except jwt.ExpiredSignatureError:
+#             raise AuthenticationFailed("Token expired!!")
 
-        user = User.objects.filter(email=request.data["email"]).first()
-        if not user:
-            raise NotFound("User not found.")
+#         serializer = BookingSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
 
-        serializer.save(user=user)
+#         user = User.objects.filter(id=payload["id"]).first()
 
-        return Response(serializer.data)
+#         if not user:
+#             raise NotFound("User not found.")
+
+#         serializer.save(user=user)
+
+#         return Response(serializer.data)
